@@ -42,8 +42,8 @@ A powerful, multi-user Telegram bot that allows you to manage your AWS EC2 insta
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/aws-ec2-telegram-bot.git
-cd aws-ec2-telegram-bot
+git clone https://github.com/jayvora18/aws-multiuser.git
+cd aws-multiuser
 ```
 
 ### 2. Install Dependencies
