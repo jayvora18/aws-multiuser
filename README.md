@@ -1,11 +1,6 @@
-# 🤖 AWS EC2 Telegram Control Bot
+# 🤖 AWS Multiuser Telegram Bot
 
 A powerful, multi-user Telegram bot that allows you to manage your AWS EC2 instances directly from Telegram. Control your cloud infrastructure on the go with an intuitive interface and advanced scheduling capabilities.
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-Latest-blue.svg)](https://core.telegram.org/bots/api)
-[![AWS SDK](https://img.shields.io/badge/AWS%20SDK-boto3-orange.svg)](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## ✨ Features
 
@@ -149,33 +144,15 @@ python bot.py
 - Stop at 6:00 PM
 - Timezone: Your selected timezone
 
-## 🔧 AWS IAM Setup
+## 🔧 AWS Access Key Setup
 
-### Create IAM User for the Bot
+### Create Access Key for the Bot
 
 1. **Go to AWS IAM Console**
    - Navigate to IAM → Users → Create User
 
 2. **Set Permissions**
    - Attach policy: `AmazonEC2FullAccess`
-   - Or create a custom policy with these permissions:
-     ```json
-     {
-       "Version": "2012-10-17",
-       "Statement": [
-         {
-           "Effect": "Allow",
-           "Action": [
-             "ec2:DescribeInstances",
-             "ec2:DescribeInstanceStatus",
-             "ec2:StartInstances",
-             "ec2:StopInstances",
-             "ec2:RebootInstances"
-           ],
-           "Resource": "*"
-         }
-       ]
-     }
      ```
 
 3. **Create Access Keys**
@@ -188,7 +165,7 @@ python bot.py
 
 The bot supports 37 timezones across 6 geographic regions:
 
-### 🇺🇸 United States (6)
+### United States (6)
 - Eastern (New York)
 - Central (Chicago)
 - Mountain (Denver)
@@ -196,7 +173,7 @@ The bot supports 37 timezones across 6 geographic regions:
 - Alaska
 - Hawaii
 
-### 🇮🇳 Asia (8)
+### Asia (8)
 - India (Kolkata)
 - China (Shanghai)
 - Japan (Tokyo)
@@ -206,7 +183,7 @@ The bot supports 37 timezones across 6 geographic regions:
 - Bangkok
 - Seoul
 
-### 🇪🇺 Europe (8)
+### Europe (8)
 - London (GMT)
 - Paris
 - Berlin
@@ -216,14 +193,14 @@ The bot supports 37 timezones across 6 geographic regions:
 - Stockholm
 - Moscow
 
-### 🇦🇺 Australia/Pacific (5)
+### Australia/Pacific (5)
 - Sydney
 - Melbourne
 - Brisbane
 - Auckland
 - Fiji
 
-### 🌎 Americas (6)
+### Americas (6)
 - Toronto
 - Vancouver
 - Mexico City
@@ -231,7 +208,7 @@ The bot supports 37 timezones across 6 geographic regions:
 - Buenos Aires
 - Santiago
 
-### 🌍 Africa (4)
+### Africa (4)
 - Cairo
 - Johannesburg
 - Lagos
@@ -249,55 +226,6 @@ aws-ec2-telegram-bot/
 ├── README.md             # This file
 └── LICENSE               # MIT License
 ```
-
-## 🔒 Security Best Practices
-
-1. **Never commit `config.py` with real credentials to Git**
-   - Add `config.py` to `.gitignore`
-   - Use environment variables in production
-
-2. **Generate a Strong Encryption Key**
-   ```bash
-   python -c "import secrets; print(secrets.token_hex(32))"
-   ```
-
-3. **Use IAM Policies with Least Privilege**
-   - Only grant necessary EC2 permissions
-   - Consider using resource-level permissions
-
-4. **Regularly Rotate AWS Access Keys**
-   - Update keys every 90 days
-   - Use `/myaccount` → Update Credentials
-
-5. **Keep the Whitelist Updated**
-   - Remove users who no longer need access
-   - Use `/revoke` command to remove access
-
-## 🐛 Troubleshooting
-
-### Bot Not Responding
-- Check if bot is running: `ps aux | grep bot.py`
-- Check logs for errors
-- Verify bot token is correct
-
-### "Access Denied" Error
-- Ensure your chat ID is in `WHITELISTED_CHAT_IDS`
-- Ask admin to use `/grant YOUR_CHAT_ID`
-
-### AWS Credentials Invalid
-- Verify Access Key and Secret Key are correct
-- Check IAM user has EC2 permissions
-- Ensure keys haven't been rotated/deleted
-
-### Schedules Not Triggering
-- Verify timezone is set correctly
-- Check bot is running at scheduled time
-- Review logs for scheduler errors
-
-### Instance Not Found
-- Ensure instance exists in selected AWS region
-- Verify AWS credentials have access to the instance
-- Check instance ID is correct
 
 ## 📊 Database Schema
 
@@ -327,34 +255,15 @@ CREATE TABLE schedules (
 );
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) - Telegram Bot API wrapper
-- [boto3](https://github.com/boto/boto3) - AWS SDK for Python
-- [APScheduler](https://github.com/agronholm/apscheduler) - Advanced Python Scheduler
-- [cryptography](https://github.com/pyca/cryptography) - Cryptographic recipes and primitives
-
 ## 📧 Support
 
 If you encounter any issues or have questions:
-
-1. Check the [Troubleshooting](#-troubleshooting) section
-2. Open an [Issue](https://github.com/yourusername/aws-ec2-telegram-bot/issues)
-3. Contact the maintainer
+ 
+   Contact the maintainer [@jayvora18]([https://telegram.me/jayvora18]
 
 ## 🔮 Future Enhancements
 
