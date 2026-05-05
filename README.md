@@ -263,7 +263,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues or have questions:
  
-   Contact the maintainer [@jayvora18]([https://telegram.me/jayvora18]
+   Contact the maintainer [@jayvora18]([https://telegram.me/jayvora18])
 
 ## 🔮 Future Enhancements
 
