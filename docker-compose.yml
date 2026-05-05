@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  multiuser-bot:
+    build: .
+    image: aws-multiuser:latest
+    container_name: aws-multiuser
+    restart: always
+    network_mode: host
+    volumes:
+      - .:/app
+      - ./users.db:/app/users.db
