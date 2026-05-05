@@ -3,6 +3,7 @@ import json
 import boto3
 import urllib3
 import config
+from whitelist import WHITELISTED_CHAT_IDS
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 import logging
@@ -25,7 +26,7 @@ logging.getLogger('apscheduler').setLevel(logging.INFO)
 TELEGRAM_BOT_TOKEN = config.TELEGRAM_BOT_TOKEN
 ADMIN_CHAT_IDS = config.ADMIN_CHAT_IDS
 ADMIN_USERNAME = config.ADMIN_USERNAME
-WHITELISTED_CHAT_IDS = config.WHITELISTED_CHAT_IDS
+ACCESS_REQUEST_RECEIVER = getattr(config, 'ACCESS_REQUEST_RECEIVER', None)
 
 # Initialize HTTP client
 http = urllib3.PoolManager()
@@ -217,9 +218,16 @@ async def register_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_whitelisted(chat_id):
         text = "⛔ <b>Access Denied</b>\n\n"
         text += "You are not authorized to use this bot.\n\n"
-        text += f"Your Chat ID: <code>{chat_id}</code>\n\n"
-        text += f"Contact the administrator to request access {ADMIN_USERNAME}"
-        send_message(chat_id, text)
+        text += "Click 'Request Access' button below."
+        
+        keyboard = [
+            [{'text': '📨 Request Access', 'callback_data': f'request_access_{chat_id}'}]
+        ]
+        
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML', 'reply_markup': json.dumps({'inline_keyboard': keyboard})}
+        encoded_data = json.dumps(payload).encode('utf-8')
+        http.request('POST', url, body=encoded_data, headers={'Content-Type': 'application/json'})
         return ConversationHandler.END
     
     # Check if already registered
@@ -1586,15 +1594,23 @@ async def update_timezone_handler(update: Update, context: ContextTypes.DEFAULT_
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
     chat_id = update.effective_chat.id
+    username = update.effective_user.username or update.effective_user.first_name
     
     if not check_authorization(chat_id):
         # Check if whitelisted
         if not is_whitelisted(chat_id):
             text = "⛔ <b>Access Denied</b>\n\n"
             text += "You are not authorized to use this bot.\n\n"
-            text += f"Your Chat ID: <code>{chat_id}</code>\n\n"
-            text += f"Contact the administrator to request access {ADMIN_USERNAME}"
-            send_message(chat_id, text)
+            text += "Click 'Request Access' button below."
+            
+            keyboard = [
+                [{'text': '📨 Request Access', 'callback_data': f'request_access_{chat_id}'}]
+            ]
+            
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML', 'reply_markup': json.dumps({'inline_keyboard': keyboard})}
+            encoded_data = json.dumps(payload).encode('utf-8')
+            http.request('POST', url, body=encoded_data, headers={'Content-Type': 'application/json'})
             return
         
         # Welcome message for new users
@@ -3055,7 +3071,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += "\n\n<b>Admin Commands:</b>\n"
         text += "👥 /users - Manage all users\n"
         text += "✅ /grant - Grant access to user\n"
-        text += "❌ /revoke - Revoke user access\n"
+        text += "🗑 /revoke - Revoke user access\n"
         text += "📋 /whitelist - Show whitelisted users"
     
     send_message(chat_id, text)
@@ -3129,38 +3145,40 @@ async def grant_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         send_message(chat_id, f"✅ Chat ID <code>{target_chat_id}</code> is already whitelisted")
         return
     
-    # Add to whitelist in config file
+    # Add to whitelist in whitelist.py file
     try:
-        with open('config.py', 'r', encoding='utf-8') as f:
-            config_content = f.read()
+        with open('whitelist.py', 'r', encoding='utf-8') as f:
+            whitelist_content = f.read()
         
         # Find the WHITELISTED_CHAT_IDS list and add the new ID
         import re
         pattern = r'(WHITELISTED_CHAT_IDS = \[)([^\]]*)(\])'
-        match = re.search(pattern, config_content, re.DOTALL)
+        match = re.search(pattern, whitelist_content, re.DOTALL)
         
         if match:
             current_ids = match.group(2)
             new_id_line = f"\n    {target_chat_id},  # Added by admin"
-            new_content = config_content.replace(
+            new_content = whitelist_content.replace(
                 f'WHITELISTED_CHAT_IDS = [{current_ids}]',
                 f'WHITELISTED_CHAT_IDS = [{current_ids}{new_id_line}\n]'
             )
             
-            with open('config.py', 'w', encoding='utf-8') as f:
+            with open('whitelist.py', 'w', encoding='utf-8') as f:
                 f.write(new_content)
             
-            # Reload config
+            # Reload whitelist
             import importlib
-            importlib.reload(config)
-            WHITELISTED_CHAT_IDS.append(target_chat_id)
+            import whitelist
+            importlib.reload(whitelist)
+            WHITELISTED_CHAT_IDS.clear()
+            WHITELISTED_CHAT_IDS.extend(whitelist.WHITELISTED_CHAT_IDS)
             
             text = f"✅ <b>Access Granted</b>\n\n"
             text += f"Chat ID: <code>{target_chat_id}</code>\n\n"
             text += "User can now register and use the bot."
             send_message(chat_id, text)
         else:
-            send_message(chat_id, "❌ Error: Could not update config file")
+            send_message(chat_id, "❌ Error: Could not update whitelist file")
     except Exception as e:
         send_message(chat_id, f"❌ Error: {str(e)}")
 
@@ -3174,7 +3192,7 @@ async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Check if chat_id provided
     if not context.args or len(context.args) == 0:
-        text = "<b>❌ Revoke Access</b>\n\n"
+        text = "<b>🗑 Revoke Access</b>\n\n"
         text += "Usage: <code>/revoke CHAT_ID</code>\n\n"
         text += "Example: <code>/revoke 123456789</code>"
         send_message(chat_id, text)
@@ -3198,7 +3216,7 @@ async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Remove from whitelist in config file
     try:
-        with open('config.py', 'r', encoding='utf-8') as f:
+        with open('whitelist.py', 'r', encoding='utf-8') as f:
             lines = f.readlines()
         
         new_lines = []
@@ -3206,16 +3224,17 @@ async def revoke_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if str(target_chat_id) not in line or 'WHITELISTED_CHAT_IDS' in line:
                 new_lines.append(line)
         
-        with open('config.py', 'w', encoding='utf-8') as f:
+        with open('whitelist.py', 'w', encoding='utf-8') as f:
             f.writelines(new_lines)
         
-        # Reload config
+        # Reload whitelist
         import importlib
-        importlib.reload(config)
+        import whitelist
+        importlib.reload(whitelist)
         if target_chat_id in WHITELISTED_CHAT_IDS:
             WHITELISTED_CHAT_IDS.remove(target_chat_id)
         
-        text = f"❌ <b>Access Revoked</b>\n\n"
+        text = f"🗑 <b>Access Revoked</b>\n\n"
         text += f"Chat ID: <code>{target_chat_id}</code>\n\n"
         text += "User can no longer use the bot."
         send_message(chat_id, text)
@@ -3254,6 +3273,138 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat.id
     
     await query.answer()
+    
+    # Handle request access button
+    if query.data.startswith('request_access_'):
+        requester_chat_id = int(query.data.replace('request_access_', ''))
+        requester_username = update.effective_user.username or update.effective_user.first_name
+        requester_first_name = update.effective_user.first_name
+        
+        # Determine who should receive the access request
+        if ACCESS_REQUEST_RECEIVER:
+            # Send to specific admin only
+            receiver_ids = [ACCESS_REQUEST_RECEIVER]
+        else:
+            # Send to all admins
+            receiver_ids = ADMIN_CHAT_IDS
+        
+        # Notify admin(s)
+        for admin_id in receiver_ids:
+            admin_text = f"🔔 <b>New Access Request</b>\n\n"
+            admin_text += f"👤 Name: {requester_first_name}\n"
+            if update.effective_user.username:
+                admin_text += f"🌀 Username: @{update.effective_user.username}\n"
+            admin_text += f"🆔 Chat ID: <code>{requester_chat_id}</code>\n\n"
+            admin_text += "Do you want to grant access?"
+            
+            admin_keyboard = [
+                [{'text': '✅ Grant Access', 'callback_data': f'approve_access_{requester_chat_id}'}],
+                [{'text': '❌ Deny Access', 'callback_data': f'deny_access_{requester_chat_id}'}]
+            ]
+            
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            payload = {'chat_id': admin_id, 'text': admin_text, 'parse_mode': 'HTML', 'reply_markup': json.dumps({'inline_keyboard': admin_keyboard})}
+            encoded_data = json.dumps(payload).encode('utf-8')
+            http.request('POST', url, body=encoded_data, headers={'Content-Type': 'application/json'})
+        
+        # Update user's message
+        text = "📨 <b>Access Request Sent</b>\n\n"
+        text += "Your request has been sent to the administrator.\n\n"
+        text += "You will be notified once your request is reviewed."
+        
+        edit_message(chat_id, query.message.message_id, text)
+        await query.answer("Request sent to administrator!")
+        return
+    
+    # Handle approve access button (admin only)
+    if query.data.startswith('approve_access_'):
+        if not is_admin(chat_id):
+            await query.answer("⛔ Unauthorized", show_alert=True)
+            return
+        
+        target_chat_id = int(query.data.replace('approve_access_', ''))
+        
+        # Check if already whitelisted
+        if target_chat_id in WHITELISTED_CHAT_IDS:
+            await query.answer("✅ User already has access", show_alert=True)
+            return
+        
+        # Add to whitelist
+        try:
+            with open('whitelist.py', 'r', encoding='utf-8') as f:
+                whitelist_content = f.read()
+            
+            import re
+            pattern = r'(WHITELISTED_CHAT_IDS = \[)([^\]]*)(\])'
+            match = re.search(pattern, whitelist_content, re.DOTALL)
+            
+            if match:
+                current_ids = match.group(2)
+                new_id_line = f"\n    {target_chat_id},  # Approved via bot"
+                new_content = whitelist_content.replace(
+                    f'WHITELISTED_CHAT_IDS = [{current_ids}]',
+                    f'WHITELISTED_CHAT_IDS = [{current_ids}{new_id_line}\n]'
+                )
+                
+                with open('whitelist.py', 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+                
+                # Reload whitelist
+                import importlib
+                import whitelist
+                importlib.reload(whitelist)
+                WHITELISTED_CHAT_IDS.clear()
+                WHITELISTED_CHAT_IDS.extend(whitelist.WHITELISTED_CHAT_IDS)
+                
+                # Update admin's message - keep the clicked button, remove the other
+                admin_text = query.message.text.replace('Do you want to grant access?', '').strip()
+                
+                admin_keyboard = [
+                    [{'text': '✅ Access Granted', 'callback_data': 'disabled'}]
+                ]
+                
+                edit_message(chat_id, query.message.message_id, admin_text, {'inline_keyboard': admin_keyboard})
+                
+                # Notify user
+                user_text = "🎉 <b>Access Granted!</b>\n\n"
+                user_text += "Your access request has been approved.\n\n"
+                user_text += "You can now use the bot!\n\n"
+                user_text += "Send /register to get started."
+                send_message(target_chat_id, user_text)
+                
+                await query.answer("✅ Access granted successfully!")
+            else:
+                await query.answer("❌ Error updating whitelist", show_alert=True)
+        except Exception as e:
+            logger.error(f"Error approving access: {e}")
+            await query.answer(f"❌ Error: {str(e)}", show_alert=True)
+        return
+    
+    # Handle deny access button (admin only)
+    if query.data.startswith('deny_access_'):
+        if not is_admin(chat_id):
+            await query.answer("⛔ Unauthorized", show_alert=True)
+            return
+        
+        target_chat_id = int(query.data.replace('deny_access_', ''))
+        
+        # Update admin's message - keep the clicked button, remove the other
+        admin_text = query.message.text.replace('Do you want to grant access?', '').strip()
+        
+        admin_keyboard = [
+            [{'text': '❌ Access Denied', 'callback_data': 'disabled'}]
+        ]
+        
+        edit_message(chat_id, query.message.message_id, admin_text, {'inline_keyboard': admin_keyboard})
+        
+        # Notify user
+        user_text = "❌ <b>Access Request Denied</b>\n\n"
+        user_text += "Your access request has been denied by the administrator.\n\n"
+        user_text += f"Please contact {ADMIN_USERNAME} for more information."
+        send_message(target_chat_id, user_text)
+        
+        await query.answer("Access request denied")
+        return
     
     # Handle AWS guide button
     if query.data == 'show_aws_guide':
